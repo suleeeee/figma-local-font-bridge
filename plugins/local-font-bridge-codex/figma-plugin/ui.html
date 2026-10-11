@@ -1,0 +1,80 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+*{box-sizing:border-box}body{margin:0;padding:20px;font:12px/1.6 system-ui,sans-serif;background:var(--figma-color-bg,#fff);color:var(--figma-color-text,#222)}h1{font-size:18px;margin:0 0 6px}h2{font-size:13px;margin:18px 0 8px}p{margin:6px 0 12px;color:var(--figma-color-text-secondary,#666)}label{display:block;margin:8px 0 4px}input,textarea,select{width:100%;padding:8px;border:1px solid var(--figma-color-border,#ccc);border-radius:6px;background:var(--figma-color-bg,#fff);color:inherit;font:inherit}button{padding:8px 12px;border:0;border-radius:6px;background:var(--figma-color-bg-brand,#087fea);color:var(--figma-color-text-onbrand,#fff);cursor:pointer}button.secondary{background:var(--figma-color-bg-secondary,#eee);color:inherit}button:disabled{opacity:.5;cursor:default}.row{display:flex;gap:8px;margin-top:10px}.row>*{flex:1}.status{padding:10px;border-radius:6px;background:var(--figma-color-bg-secondary,#eee);margin:14px 0;overflow-wrap:anywhere}pre{white-space:pre-wrap;word-break:break-word;max-height:170px;overflow:auto;padding:10px;background:var(--figma-color-bg-secondary,#eee);border-radius:6px}textarea{height:130px;font:11px/1.5 monospace}#approval{border:1px solid var(--figma-color-border,#ccc);padding:12px;border-radius:8px;margin:14px 0}small{color:var(--figma-color-text-secondary,#666)}[hidden]{display:none!important}
+.version{position:fixed;right:12px;bottom:8px;font-size:10px;line-height:1;color:var(--figma-color-text-tertiary,#999);opacity:.65;pointer-events:none}
+</style></head><body>
+<div class="status" id="status" role="status" aria-live="polite">等待 AI 工具连接…（保持插件打开）</div>
+<p>让 Codex 等本地 AI 启动桥接，用本机字体修改设计。<br>告知 AI：“启动 Local Font Bridge 并连接，通过桥接修改设计。”</p>
+
+<section id="approval" hidden><strong>AI 请求执行设计任务</strong><p>请检查本次代码，批准后执行。</p><textarea id="source" readonly aria-label="待执行代码"></textarea><small id="expires"></small><div class="row"><button id="approve">批准本次执行</button><button class="secondary" id="reject">拒绝</button></div></section>
+
+<span class="version">v1.0.0</span>
+<script>
+const $ = id => document.getElementById(id);
+const base = 'http://localhost:4789';
+const session = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let settingsTimer, settingsAttempts=0;
+let connected = false, generation = 0, timer, failures = 0, pending = null, pluginKey = "", authorized = false;
+const seen = new Set(), outbox = new Map();
+function send(message) { parent.postMessage({pluginMessage:message}, '*'); }
+function setStatus(text) { $('status').textContent = text; }
+function approval(visible) { $('approval').hidden=!visible;send({type:'resize',expanded:visible}); }
+async function request(route, body, token) {
+ const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 4500);
+ try { const res = await fetch(base + route, {method:body === undefined ? 'GET':'POST',headers:{'content-type':'application/json',authorization:`Bearer ${token}`},body:body === undefined ? undefined:JSON.stringify(body),signal:controller.signal});
+ const data = await res.json(); if (!res.ok) { const error = new Error(data.error || `HTTP ${res.status}`); error.status = res.status; throw error; } return data;
+ } finally {clearTimeout(timeout);}
+}
+function stop() { connected=false;generation++;clearTimeout(timer);pending=null;approval(false); }
+function connect() {stop(); if (!pluginKey) return; connected=true;failures=0;setStatus('等待 AI 工具连接…（保持插件打开）');poll(generation);}
+async function poll(g) {
+ const token=pluginKey;
+ try {
+  if (!authorized) {
+   const registration = await request('/plugin/register', {key:pluginKey}, ''); if(g!==generation)return;
+   if (!registration.approved) {setStatus('等待首次授权：请告知 AI 调用 Local Font Bridge 桥接本地字体。');failures=0;return;}
+   authorized=true;
+  }
+  await request('/health', undefined, token); if(g!==generation)return;
+  for (const [id,payload] of outbox) { try {await request('/plugin/result',payload,token);outbox.delete(id);}catch(e){if(e.status===409)outbox.delete(id);else throw e;} }
+  if(g!==generation)return;
+  const {task}=await request('/plugin/next',{session},token);if(g!==generation)return;
+  failures=0;
+  if(pending && Date.now()>=pending.deadline) {pending=null;approval(false);}
+  if(task && !seen.has(task.id)) {
+   seen.add(task.id); if(seen.size>500)seen.delete(seen.values().next().value);
+   if(task.kind==='run-js'){pending=task;$('source').value=task.code;$('expires').textContent='审批有效至 '+new Date(task.deadline).toLocaleTimeString();approval(true);setStatus('已连接：有代码等待你审批。');}
+   else {send({type:'execute',task});setStatus('已连接：正在查询字体…');}
+  } else setStatus(pending?'已连接：有代码等待你审批。':'已连接，等待本机任务。');
+ } catch(error) {
+  if(g!==generation)return;
+  failures++;
+  if(error.status===401) {authorized=false;setStatus('正在重新连接 AI 工具…');return;}
+  if(error.status===409) {failures=0;setStatus('正在等待旧连接释放，自动重连中…（保持插件打开）');return;}
+  setStatus('等待 AI 工具启动，正在自动重试…');
+ } finally {if(connected&&g===generation)timer=setTimeout(()=>poll(g),Math.min(10000,900*Math.pow(2,Math.min(failures,4))));}
+}
+$('approve').onclick=()=>{if(!pending)return;const task=pending;pending=null;approval(false);if(Date.now()>=task.deadline){setStatus('任务已过期，请重新发起。');return;}send({type:'execute',task,approved:true});setStatus('已批准，正在执行…');};
+$('reject').onclick=()=>{if(!pending)return;outbox.set(pending.id,{id:pending.id,session,ok:false,error:'用户拒绝执行代码'});pending=null;approval(false);setStatus('已拒绝执行。');};
+window.onmessage=event=>{const message=event.data && event.data.pluginMessage;if(!message || typeof message!=='object')return;
+ if(event.source!==parent && message.bridgeSession!==session)return;
+ if(message.type==='settings'){
+  if(pluginKey)return;clearTimeout(settingsTimer);
+  try {
+   if(!message.token && (typeof crypto==='undefined' || typeof crypto.getRandomValues!=='function'))throw new Error('当前界面无法生成安全连接凭据，请检查插件控制台。');
+   pluginKey=message.token || Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
+   send({type:'save-settings',token:pluginKey});connect();
+  } catch(error){setStatus('初始化失败：'+error.message);}
+ }
+ if(message.type==='settings-error'){clearTimeout(settingsTimer);setStatus('初始化失败：'+message.error);}
+ if(message.type==='result'){outbox.set(message.id,{...message,session});setStatus(message.ok?'任务完成，等待结果回传。':'任务失败，等待结果回传。');}
+};
+function requestSettings(){
+ if(pluginKey)return;
+ send({type:'get-settings',bridgeSession:session});
+ settingsAttempts++;
+ if(settingsAttempts>=5){setStatus('插件初始化未响应，请关闭后重新打开，并确认 code.js 与 ui.html 已一同更新。');return;}
+ settingsTimer=setTimeout(requestSettings,1000);
+}
+window.onerror=(message)=>{setStatus('界面错误：'+String(message).slice(0,180));};
+requestSettings();
+</script></body></html>

@@ -1,0 +1,20 @@
+{
+  "name": "suli-font-bridge",
+  "interface": {
+    "displayName": "suli Font Bridge"
+  },
+  "plugins": [
+    {
+      "name": "local-font-bridge-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/local-font-bridge-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
