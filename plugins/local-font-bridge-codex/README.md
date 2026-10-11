@@ -9,14 +9,14 @@ Figma 插件：https://www.figma.com/community/plugin/1691148316136154777
 
 需要 Node.js/npm（建议 Node.js 22 LTS 或更新 LTS）及 Figma Desktop。首次启动需要联网安装依赖。
 
-解压完整 marketplace 包后，在终端运行，路径替换为实际解压目录：
+在终端运行以下命令，从 GitHub 安装：
 
 ```sh
-codex plugin marketplace add /实际路径/Figma-Local-Font-Bridge-Marketplace --json
+codex plugin marketplace add suleeeee/figma-local-font-bridge --json
 codex plugin add local-font-bridge-codex@suli-font-bridge --json
 ```
 
-安装后打开新的 Codex 聊天，以加载 MCP 和回退技能。在 Figma Desktop 打开社区插件并保持打开，首次连接需授权。开发测试可导入 figma-plugin/manifest.json。
+安装后打开新的 Codex 聊天，以加载 MCP 和回退技能。当前 Figma 社区插件尚未上架：从本仓库下载代码，在 Figma Desktop 的 Plugins → Development → Import plugin from manifest 中选择 plugins/local-font-bridge-codex/figma-plugin/manifest.json，打开插件并保持打开。首次连接需授权。
 
 当普通 Figma MCP 实际报告原字体无法加载时，集成指导 Codex 检查桌面字体，并通过桥接继续修改；执行设计代码前需要在 Figma 批准。关闭窗口即停止该窗口的连接，快速重开时会等待旧连接释放并自动重试。
 
