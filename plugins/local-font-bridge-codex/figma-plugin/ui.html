@@ -3,9 +3,9 @@
 .setup-step{margin:0 0 6px}.install-instruction{display:block;height:48px;resize:none;margin:0 0 10px;padding:6px 8px;font:11px/1.5 system-ui,sans-serif;overflow-wrap:anywhere;color:var(--figma-color-text-secondary,#666)}
 .version{position:fixed;right:12px;bottom:8px;font-size:10px;line-height:1;color:var(--figma-color-text-tertiary,#999);opacity:.65;pointer-events:none}
 </style></head><body>
-<p class="setup-step">① 复制下方指令给本地 AI，安装 Skill（仅需一次）。</p>
+<p class="setup-step">① 将下方指令发给本地 AI，安装 Skill。</p>
 <textarea class="install-instruction" readonly aria-label="复制给 AI 的 Skill 安装指令" onclick="this.select()">安装这个 Skill：https://github.com/suleeeee/figma-local-font-bridge/tree/main/skills/figma-local-font-bridge</textarea>
-<p class="setup-step">② 安装后新建 AI 聊天，保持本插件打开。</p>
+<p class="setup-step">② 新建 AI 聊天，保持插件打开。</p>
 <div class="status" id="status" role="status" aria-live="polite">等待 AI 工具连接…（保持插件打开）</div>
 
 <section id="approval" hidden><strong>AI 请求执行设计任务</strong><p>请检查本次代码，批准后执行。</p><textarea id="source" readonly aria-label="待执行代码"></textarea><small id="expires"></small><div class="row"><button id="approve">批准本次执行</button><button class="secondary" id="reject">拒绝</button></div></section>
