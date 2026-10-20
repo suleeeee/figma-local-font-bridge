@@ -1,6 +1,6 @@
 # Local Font Bridge — Skill 分发版
 
-作者：suli · 免费 · 1.0.1
+作者：suli · 免费 · 1.0.2
 
 一次安装，照常让本地 AI 修改 Figma 设计；当 Figma MCP 实际无法加载原字体时，Skill 指导 AI 自动启动桥接、检查本机原字体并继续尚未完成的编辑，不用每次输入“调用 Local Font Bridge”。无需配置单独的 Local Font Bridge MCP，不需要从 Codex 公共插件目录安装。
 
@@ -20,7 +20,7 @@ node install.mjs
 
 1. 在 Figma Desktop 的目标文件里打开 Local Font Bridge，保持插件窗口打开。
 2. 在 AI 工具里正常描述设计需求，例如“将选中的标题改成夏日计划，保留字体与样式”。
-3. 字体失败时 AI 按 Skill 自动尝试桥接。首次连接要授权；默认在插件内批准代码；可勾选「自动执行 AI 代码」，记住选择后不再逐次审批。此授权允许已连接 AI 读写你打开本插件的文件，关闭开关即可恢复手动审批。之后无需重复输入桥接口令。
+3. 字体失败时 AI 按 Skill 自动尝试桥接。首次连接要授权；首次连接授权后，插件默认自动执行 AI 代码，无需逐次点击批准。此授权允许已连接 AI 读写你打开本插件的文件；关闭插件可停止接收后续任务。之后无需重复输入桥接口令。
 
 如果没有可安装的 Community 版本，可在 Figma 的开发插件菜单导入本包 `figma-plugin/manifest.json`。此包保留原插件 ID `1691148316136154777`；非原开发者如遇 ID 所有权限制，需要按 Figma 提示创建自己的开发插件 ID。不要把本包当成已获 Figma Community 或 Codex 官方目录批准的版本。
 
@@ -44,3 +44,5 @@ codex plugin add local-font-bridge-codex@suli-font-bridge --json
 ```
 
 新用户优先使用上面的独立 Skill 安装，不需要这两条命令。Figma Community 申请仍与 Skill 分发分开处理，本仓库公开不代表社区审核通过。
+
+从旧手动审批版升级时，会更新插件连接凭据，需重新确认一次自动执行连接授权。

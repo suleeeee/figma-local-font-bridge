@@ -1,5 +1,6 @@
 figma.showUI(__html__, { width: 440, height: 220, themeColors: true });
-let bridgeSession = "", storageAvailable = true, autoExecuteEnabled = false;
+let bridgeSession = "", storageAvailable = true;
+const bridgeRuntime = Object.freeze({version:"1.0.2",executionMode:"automatic-after-pairing"});
 function post(message) { figma.ui.postMessage({ ...message, bridgeSession }); }
 const fontLoads = new Map();
 async function loadFont(font) {
@@ -12,30 +13,25 @@ figma.ui.onmessage = async message => {
   if (message.type === 'get-settings') {
     bridgeSession = typeof message.bridgeSession === 'string' ? message.bridgeSession : '';
 
-    if (!figma.pluginId) { storageAvailable = false; post({type:'settings',token:'',temporary:true,autoExecute:false}); return; }
-    try { const token = await figma.clientStorage.getAsync('bridge-plugin-key-v2');
-      autoExecuteEnabled = (await figma.clientStorage.getAsync('bridge-auto-execute-v1')) === true;
-      post({ type: 'settings', token: token || '', autoExecute: autoExecuteEnabled });
+    if (!figma.pluginId) { storageAvailable = false; post({type:'settings',token:'',temporary:true}); return; }
+    try {
+      const policy = await figma.clientStorage.getAsync('bridge-execution-policy-v1');
+      // Prior manual-approval credentials cannot silently grant automatic execution.
+      const token = policy === 'automatic-after-pairing' ? await figma.clientStorage.getAsync('bridge-plugin-key-v2') : '';
+      post({ type: 'settings', token: token || '' });
     } catch (error) {
       const detail = String(error.message || error);
-      if (/without a plugin ID/i.test(detail)) { storageAvailable = false; post({ type: 'settings', token: '', temporary: true, autoExecute: false }); }
+      if (/without a plugin ID/i.test(detail)) { storageAvailable = false; post({ type: 'settings', token: '', temporary: true }); }
       else post({ type: 'settings-error', error: detail });
     }
     return;
   }
-  if (message.type === 'set-execution-mode') {
-    autoExecuteEnabled = message.enabled === true;
-    let temporary = !storageAvailable;
-    if (storageAvailable) {
-      try { await figma.clientStorage.setAsync('bridge-auto-execute-v1', autoExecuteEnabled); }
-      catch { temporary = true; }
-    }
-    post({type:'execution-mode',enabled:autoExecuteEnabled,temporary});
-    return;
-  }
   if (message.type === 'save-settings') {
     if (!storageAvailable) return;
-    try { await figma.clientStorage.setAsync('bridge-plugin-key-v2', message.token); }
+    try {
+      await figma.clientStorage.setAsync('bridge-plugin-key-v2', message.token);
+      await figma.clientStorage.setAsync('bridge-execution-policy-v1', 'automatic-after-pairing');
+    }
     catch (error) { post({ type: 'settings-error', error: String(error.message || error) }); }
     return;
   }
@@ -55,8 +51,7 @@ figma.ui.onmessage = async message => {
         result = { requested: { family: task.family, style: task.style }, matched: exact || null, matches, totalFonts: fonts.length, loadOk, loadError };
       }
     } else if (task.kind === 'run-js' && message.approved === true) {
-      if (message.approvalMode === 'trusted' && !autoExecuteEnabled) throw new Error('自动执行未获授权，请手动批准。');
-      result = await new Function('figma', `return (async () => {\n${task.code}\n})();`)(figma);
+      result = await new Function('figma', 'bridge', `return (async () => {\n${task.code}\n})();`)(figma, bridgeRuntime);
     } else throw new Error('不支持的任务或代码未获批准');
     // Detect unsupported return values before the iframe message boundary.
     result = result === undefined ? null : JSON.parse(JSON.stringify(result));

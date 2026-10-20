@@ -1,7 +1,6 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
 *{box-sizing:border-box}body{margin:0;padding:20px;font:12px/1.6 system-ui,sans-serif;background:var(--figma-color-bg,#fff);color:var(--figma-color-text,#222)}h1{font-size:18px;margin:0 0 6px}h2{font-size:13px;margin:18px 0 8px}p{margin:6px 0 12px;color:var(--figma-color-text-secondary,#666)}label{display:block;margin:8px 0 4px}input,textarea,select{width:100%;padding:8px;border:1px solid var(--figma-color-border,#ccc);border-radius:6px;background:var(--figma-color-bg,#fff);color:inherit;font:inherit}button{padding:8px 12px;border:0;border-radius:6px;background:var(--figma-color-bg-brand,#087fea);color:var(--figma-color-text-onbrand,#fff);cursor:pointer}button.secondary{background:var(--figma-color-bg-secondary,#eee);color:inherit}button:disabled{opacity:.5;cursor:default}.row{display:flex;gap:8px;margin-top:10px}.row>*{flex:1}.status{padding:10px;border-radius:6px;background:var(--figma-color-bg-secondary,#eee);margin:14px 0;overflow-wrap:anywhere}pre{white-space:pre-wrap;word-break:break-word;max-height:170px;overflow:auto;padding:10px;background:var(--figma-color-bg-secondary,#eee);border-radius:6px}textarea{height:130px;font:11px/1.5 monospace}#approval{border:1px solid var(--figma-color-border,#ccc);padding:12px;border-radius:8px;margin:14px 0}small{color:var(--figma-color-text-secondary,#666)}[hidden]{display:none!important}
 .setup-step{margin:0 0 6px}.install-instruction{display:block;height:48px;resize:none;margin:0 0 10px;padding:6px 8px;font:11px/1.5 system-ui,sans-serif;overflow-wrap:anywhere;color:var(--figma-color-text-secondary,#666)}
-.execution-mode{position:fixed;left:20px;bottom:8px;display:flex;align-items:center;gap:5px;margin:0;font-size:11px;line-height:1.4;color:var(--figma-color-text-secondary,#666)}.execution-mode input{width:12px;height:12px;margin:0;padding:0}
 .version{position:fixed;right:12px;bottom:8px;font-size:10px;line-height:1;color:var(--figma-color-text-tertiary,#999);opacity:.65;pointer-events:none}
 </style></head><body>
 <p class="setup-step">① 将下方指令发给本地 AI，安装 Skill。</p>
@@ -9,49 +8,32 @@
 <p class="setup-step">② 新建 AI 聊天，保持插件打开。</p>
 <div class="status" id="status" role="status" aria-live="polite">等待 AI 工具连接…（保持插件打开）</div>
 
-<section id="approval" hidden><strong>AI 请求执行设计任务</strong><p>请检查本次代码，批准后执行。</p><textarea id="source" readonly aria-label="待执行代码"></textarea><small id="expires"></small><div class="row"><button id="approve">批准本次执行</button><button class="secondary" id="reject">拒绝</button></div></section>
 
-<label class="execution-mode" title="开启后，已连接的本机 AI 可在打开本插件的文件中自动执行读写代码；关闭后恢复逐次审批。"><input type="checkbox" id="auto-execute">自动执行 AI 代码</label>
 <span class="version">v1.0.0</span>
 <script>
 const $ = id => document.getElementById(id);
 const base = 'http://localhost:4789';
 const session = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 let settingsTimer, settingsAttempts=0;
-let connected = false, generation = 0, timer, failures = 0, pending = null, pluginKey = "", authorized = false;
+let connected = false, generation = 0, timer, failures = 0, pluginKey = "", authorized = false;
 const seen = new Set(), outbox = new Map();
-let autoExecute = false, executing = null;
+let executing = null;
 function send(message) { parent.postMessage({pluginMessage:message}, '*'); }
 function setStatus(text) { $('status').textContent = text; }
-function approval(visible) { $('approval').hidden=!visible;send({type:'resize',expanded:visible}); }
-function executePending(mode) {
- if(!pending)return;
- const task=pending;pending=null;approval(false);
- if(Date.now()>=task.deadline){setStatus('任务已过期，请重新发起。');return;}
- executing=task.id;
- send({type:'execute',task,approved:true,approvalMode:mode});
- setStatus(mode==='trusted'?'已连接：正在自动执行…':'已批准，正在执行…');
-}
-$('auto-execute').onchange=()=>{
- // Enabling takes effect only after the plugin main thread acknowledges the saved grant.
- if(!$('auto-execute').checked)autoExecute=false;
- $('auto-execute').disabled=true;
- send({type:'set-execution-mode',enabled:$('auto-execute').checked});
-};
 async function request(route, body, token) {
  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 4500);
  try { const res = await fetch(base + route, {method:body === undefined ? 'GET':'POST',headers:{'content-type':'application/json',authorization:`Bearer ${token}`},body:body === undefined ? undefined:JSON.stringify(body),signal:controller.signal});
  const data = await res.json(); if (!res.ok) { const error = new Error(data.error || `HTTP ${res.status}`); error.status = res.status; throw error; } return data;
  } finally {clearTimeout(timeout);}
 }
-function stop() { connected=false;generation++;clearTimeout(timer);pending=null;executing=null;approval(false); }
+function stop() { connected=false;generation++;clearTimeout(timer);executing=null; }
 function connect() {stop(); if (!pluginKey) return; connected=true;failures=0;setStatus('等待 AI 工具连接…（保持插件打开）');poll(generation);}
 async function poll(g) {
  const token=pluginKey;
  try {
   if (!authorized) {
    const registration = await request('/plugin/register', {key:pluginKey}, ''); if(g!==generation)return;
-   if (!registration.approved) {setStatus('等待首次授权：请在 AI 工具中确认本次连接。');failures=0;return;}
+   if (!registration.approved) {setStatus('等待连接授权：授权后自动执行 AI 任务。');failures=0;return;}
    authorized=true;
   }
   await request('/health', undefined, token); if(g!==generation)return;
@@ -59,13 +41,12 @@ async function poll(g) {
   if(g!==generation)return;
   const {task}=await request('/plugin/next',{session},token);if(g!==generation)return;
   failures=0;
-  if(pending && Date.now()>=pending.deadline) {pending=null;approval(false);}
   if(executing && (!task || task.id!==executing))executing=null;
   if(task && !seen.has(task.id)) {
    seen.add(task.id); if(seen.size>500)seen.delete(seen.values().next().value);
-   if(task.kind==='run-js'){pending=task;if(autoExecute){executePending('trusted');}else{$('source').value=task.code;$('expires').textContent='审批有效至 '+new Date(task.deadline).toLocaleTimeString();approval(true);setStatus('已连接：有代码等待你审批。');}}
-   else {send({type:'execute',task});setStatus('已连接：正在查询字体…');}
-  } else setStatus(pending?'已连接：有代码等待你审批。':executing?'已连接：正在执行…':'已连接，等待本机任务。');
+   if(Date.now()>=task.deadline){outbox.set(task.id,{id:task.id,session,ok:false,error:'任务已过期，未执行'});}
+   else {executing=task.id;send({type:'execute',task,approved:task.kind==='run-js'});setStatus(task.kind==='run-js'?'已连接：正在自动执行…':'已连接：正在查询字体…');}
+  } else setStatus(executing?'已连接：正在执行…':'已连接，等待本机任务。');
  } catch(error) {
   if(g!==generation)return;
   failures++;
@@ -74,13 +55,10 @@ async function poll(g) {
   setStatus('等待 AI 工具连接…（保持插件打开）');
  } finally {if(connected&&g===generation)timer=setTimeout(()=>poll(g),Math.min(10000,900*Math.pow(2,Math.min(failures,4))));}
 }
-$('approve').onclick=()=>executePending('manual');
-$('reject').onclick=()=>{if(!pending)return;outbox.set(pending.id,{id:pending.id,session,ok:false,error:'用户拒绝执行代码'});pending=null;approval(false);setStatus('已拒绝执行。');};
 window.onmessage=event=>{const message=event.data && event.data.pluginMessage;if(!message || typeof message!=='object')return;
  if(event.source!==parent && message.bridgeSession!==session)return;
  if(message.type==='settings'){
   if(pluginKey)return;clearTimeout(settingsTimer);
-  autoExecute=message.autoExecute===true;$('auto-execute').checked=autoExecute;
   try {
    if(!message.token && (typeof crypto==='undefined' || typeof crypto.getRandomValues!=='function'))throw new Error('当前界面无法生成安全连接凭据，请检查插件控制台。');
    pluginKey=message.token || Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
@@ -88,7 +66,6 @@ window.onmessage=event=>{const message=event.data && event.data.pluginMessage;if
   } catch(error){setStatus('初始化失败：'+error.message);}
  }
  if(message.type==='settings-error'){clearTimeout(settingsTimer);setStatus('初始化失败：'+message.error);}
- if(message.type==='execution-mode'){autoExecute=message.enabled===true;$('auto-execute').checked=autoExecute;$('auto-execute').disabled=false;$('auto-execute').title=message.temporary?'本次开启有效，重开后需重新设置':'';if(autoExecute&&pending)executePending('trusted');}
  if(message.type==='result'){if(executing===message.id)executing=null;outbox.set(message.id,{...message,session});setStatus(message.ok?'任务完成，等待结果回传。':'任务失败，等待结果回传。');}
 };
 function requestSettings(){

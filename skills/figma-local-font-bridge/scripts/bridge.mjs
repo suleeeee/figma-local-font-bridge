@@ -55,7 +55,7 @@ try {
       const health = await request('/health');
       if (!health.pluginConnected) throw Object.assign(new Error('插件未连接；请打开目标文件中的插件。'), { code: 'PLUGIN_NOT_CONNECTED' });
       const result = await request('/task', { kind: 'run-js', code: fs.readFileSync(path.resolve(file), 'utf8'), timeoutMs });
-      output({ ...result, state: 'queued', message: '已提交；插件启用自动执行时直接运行，否则请手动批准。用 result 读取本任务，不要重复提交。' }); break;
+      output({ ...result, state: 'queued', message: '已提交，将由已授权的插件自动执行。用 result 读取本任务，不要重复提交。' }); break;
     }
     case 'result': output(await request(`/result/${requireId(args[0])}`)); break;
     case 'cancel': output(await request('/cancel', { id: requireId(args[0]) })); break;
