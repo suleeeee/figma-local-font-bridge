@@ -1,4 +1,4 @@
-figma.showUI(__html__, { width: 440, height: 180, themeColors: true });
+figma.showUI(__html__, { width: 440, height: 220, themeColors: true });
 let bridgeSession = "", storageAvailable = true;
 function post(message) { figma.ui.postMessage({ ...message, bridgeSession }); }
 const fontLoads = new Map();
@@ -8,7 +8,7 @@ async function loadFont(font) {
   return fontLoads.get(key);
 }
 figma.ui.onmessage = async message => {
-  if (message.type === 'resize') { figma.ui.resize(440, message.expanded === true ? 430 : 180); return; }
+  if (message.type === 'resize') { figma.ui.resize(440, message.expanded === true ? 470 : 220); return; }
   if (message.type === 'get-settings') {
     bridgeSession = typeof message.bridgeSession === 'string' ? message.bridgeSession : '';
 
