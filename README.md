@@ -1,30 +1,46 @@
-# Figma_Local Font Bridge — Codex 集成
+# Local Font Bridge — Skill 分发版
 
-发布者：suli。免费。
+作者：suli · 免费 · 1.0.0
 
-Figma 插件：https://www.figma.com/community/plugin/1691148316136154777
-（社区提交已被拒绝，复审咨询帖已提交、待论坛审核；当前请使用包内开发插件。此链接不代表插件已公开可安装。）
+一次安装，照常让本地 AI 修改 Figma 设计；当 Figma MCP 实际无法加载原字体时，Skill 指导 AI 自动启动桥接、检查本机原字体并继续尚未完成的编辑，不用每次输入“调用 Local Font Bridge”。无需配置单独的 Local Font Bridge MCP，不需要从 Codex 公共插件目录安装。
 
-## 安装
+## 安装一次
 
-需要 Node.js/npm（建议 Node.js 22 LTS 或更新 LTS）及 Figma Desktop。首次启动需要联网安装依赖。
+需要 Figma Desktop、Node.js 20+，以及能读取 Skill、执行本机命令并连接 localhost 的 AI 工具。Codex 安装方法：从 [GitHub 下载 ZIP](https://github.com/suleeeee/figma-local-font-bridge/archive/refs/heads/main.zip) 并解压，将目录交给 Codex，说“安装这个目录里的 Local Font Bridge Skill”；也可以在解压目录执行：
 
-在终端运行以下命令，从 GitHub 安装：
+```sh
+node install.mjs
+```
+
+默认安装到 `~/.agents/skills/figma-local-font-bridge`。不会修改 MCP 配置，不会 npm install。打开新聊天，若未发现 Skill 则重启 Codex。已有完全相同版本时重复安装不产生副作用；更新使用 `node install.mjs --update`，原版备份放在本发布目录的 install-backups 下。
+
+其他支持 Agent Skills 的本地客户端：将 `skills/figma-local-font-bridge` 放到该客户端的技能目录，且允许其执行本机 Node 命令。尚未逐一验证其他客户端，不能保证它们自动采用 Skill。
+
+## 每次使用
+
+1. 在 Figma Desktop 的目标文件里打开 Local Font Bridge，保持插件窗口打开。
+2. 在 AI 工具里正常描述设计需求，例如“将选中的标题改成夏日计划，保留字体与样式”。
+3. 字体失败时 AI 按 Skill 自动尝试桥接。首次连接要授权；执行代码要在插件内检查并批准。之后无需重复输入桥接口令。
+
+如果没有可安装的 Community 版本，可在 Figma 的开发插件菜单导入本包 `figma-plugin/manifest.json`。此包保留原插件 ID `1691148316136154777`；非原开发者如遇 ID 所有权限制，需要按 Figma 提示创建自己的开发插件 ID。不要把本包当成已获 Figma Community 或 Codex 官方目录批准的版本。
+
+## 边界与数据
+
+Skill 的自动匹配取决于 AI 客户端，不是全局错误拦截。云端执行环境不能连接用户电脑的 localhost。字体必须已在 Figma Desktop 中可加载；仅安装 Skill 不会安装字体。Figma 插件与本机桥接服务仍然承担实际执行，服务由 AI 的 Skill 脚本按需启动。通用批准执行 JavaScript、查询字体、验证加载、重新连接等原功能保留。
+
+字体文件不经桥接传输。字体元数据、批准的代码和执行结果可能包含文档内容，会返回调用 AI 工具。凭据默认保存在 `~/.local/state/local-font-bridge`，不会打入发布包；任务结果只在服务内存中短暂保存。服务仅监听 localhost，不设开机自启；凭据跨会话保存。
+
+已有 Local Font Bridge MCP 时，Skill 优先复用其工具。两份集成不要同时抢占 4789；不会接管旧服务或读取其凭据。如需从旧 MCP 迁移，可先关闭旧集成服务，新服务首次连接重新授权即可。
+
+Codex 的 Skill 自动匹配和本地目录规则见 [OpenAI 官方文档](https://learn.chatgpt.com/docs/build-skills)。
+
+## 已有 MCP 集成
+
+旧版仍保留在 `plugins/local-font-bridge-codex`，已安装用户可以继续使用；它的工具可供本 Skill 优先复用。旧版安装命令：
 
 ```sh
 codex plugin marketplace add suleeeee/figma-local-font-bridge --json
 codex plugin add local-font-bridge-codex@suli-font-bridge --json
 ```
 
-安装后打开新的 Codex 聊天，以加载 MCP 和回退技能。当前 Figma 社区插件尚未上架：从本仓库下载代码，在 Figma Desktop 的 Plugins → Development → Import plugin from manifest 中选择 plugins/local-font-bridge-codex/figma-plugin/manifest.json，打开插件并保持打开。首次连接需授权。
-
-当普通 Figma MCP 实际报告原字体无法加载时，集成指导 Codex 检查桌面字体，并通过桥接继续修改；执行设计代码前需要在 Figma 批准。关闭窗口即停止该窗口的连接，快速重开时会等待旧连接释放并自动重试。
-
-字体文件不传输。查询与批准执行的结果返回 AI 工具，可能包含文档数据；AI 的后续处理适用其自身政策。
-
-## 验证范围
-
-已验证：工具发现、桌面字体加载、真实文字修改、独立 Codex 聊天自动回退、正式 ID 凭据保存、快速重开恢复。
-尚未验证：服务完全停止后的宿主冷启动、全新电脑安装。
-
-此包用于 marketplace 分发，不代表已上架 OpenAI 官方公共目录。
+新用户优先使用上面的独立 Skill 安装，不需要这两条命令。Figma Community 申请仍与 Skill 分发分开处理，本仓库公开不代表社区审核通过。

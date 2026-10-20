@@ -1,0 +1,5 @@
+interface:
+  display_name: "Local Font Bridge"
+  short_description: "Figma 字体加载失败时，自动启动桥接并用本机原字体继续编辑"
+policy:
+  allow_implicit_invocation: true
