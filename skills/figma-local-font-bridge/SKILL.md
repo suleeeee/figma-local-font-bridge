@@ -9,7 +9,7 @@ description: 在本地 AI 工具修改 Figma 设计、生成可编辑文字时�
 
 ## 连接
 
-优先使用当前已有的 `figma_bridge_status`、`figma_connect_plugin`、`figma_check_font`、`figma_run_js`，避免启动第二个服务。没有这些 MCP 工具时，使用本 Skill 的脚本，不要求另装 Local Font Bridge MCP：
+优先使用当前已有的 `figma_bridge_status`、`figma_connect_plugin`、`figma_check_font`、`figma_run_js`，避免启动第二个服务。没有这些 MCP 工具，或已有工具因 transport 关闭、服务失联而不可用时，改用本 Skill 的脚本，不要求用户重新配置 Local Font Bridge MCP。脚本如报告 OWNER_MISMATCH，仍按下述端口冲突规则处理，不能接管旧服务：
 
 ```sh
 node "<本 SKILL.md 所在目录>/scripts/bridge.mjs" start
