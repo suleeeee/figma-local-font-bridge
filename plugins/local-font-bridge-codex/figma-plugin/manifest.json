@@ -1,5 +1,5 @@
 {
-  "name": "Figma_Local Font Bridge",
+  "name": "Local Font Bridge",
   "api": "1.0.0",
   "main": "bridge-code.js",
   "ui": "ui.html",
@@ -11,7 +11,7 @@
     "allowedDomains": [
       "http://localhost:4789"
     ],
-    "reasoning": "Connects only to the user-operated companion service on this computer to check desktop fonts and execute explicitly approved local automation. Font files are not uploaded."
+    "reasoning": "Connects only to a user-operated localhost companion to identify available desktop font families and styles, verify font loading, and perform automatic Plugin API operations after initial connection authorization. Font files are not uploaded; operation results may include document content."
   },
   "id": "1691148316136154777"
 }

@@ -1,16 +1,16 @@
 {
   "name": "local-font-bridge-codex",
-  "version": "1.0.1",
-  "description": "Figma 字体加载失败时，通过本机 Figma 插件验证原字体并继续未完成的设计修改。",
+  "version": "1.0.2",
+  "description": "识别本机字体家族与样式，验证真实加载，并支持保留原字体的可编辑文字。",
   "author": {
     "name": "suli"
   },
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Figma_Local Font Bridge",
-    "shortDescription": "Figma 字体失败时尝试本机桥接",
-    "longDescription": "本地 stdio MCP 与自动字体回退指引。需 Node/npm、Figma 桌面插件保持打开、首次连接授权和逐次代码审批。",
+    "displayName": "Local Font Bridge",
+    "shortDescription": "识别本机字体并验证实际加载",
+    "longDescription": "通过桌面插件查询字体家族和样式，实际验证指定字体能否加载，并支持本地 AI 使用原字体编辑。需要 Node.js 20+ 和桌面插件保持打开；首次连接明确授权后，AI 提交的设计代码会自动执行，可读取和修改文档。",
     "category": "Productivity",
     "defaultPrompt": "修改 Figma 设计时，字体加载失败则尝试 Local Font Bridge。",
     "developerName": "suli"
