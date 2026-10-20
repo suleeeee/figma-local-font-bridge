@@ -1,6 +1,6 @@
 # Local Font Bridge — Skill 分发版
 
-作者：suli · 免费 · 1.0.0
+作者：suli · 免费 · 1.0.1
 
 一次安装，照常让本地 AI 修改 Figma 设计；当 Figma MCP 实际无法加载原字体时，Skill 指导 AI 自动启动桥接、检查本机原字体并继续尚未完成的编辑，不用每次输入“调用 Local Font Bridge”。无需配置单独的 Local Font Bridge MCP，不需要从 Codex 公共插件目录安装。
 
@@ -20,13 +20,13 @@ node install.mjs
 
 1. 在 Figma Desktop 的目标文件里打开 Local Font Bridge，保持插件窗口打开。
 2. 在 AI 工具里正常描述设计需求，例如“将选中的标题改成夏日计划，保留字体与样式”。
-3. 字体失败时 AI 按 Skill 自动尝试桥接。首次连接要授权；执行代码要在插件内检查并批准。之后无需重复输入桥接口令。
+3. 字体失败时 AI 按 Skill 自动尝试桥接。首次连接要授权；默认在插件内批准代码；可勾选「自动执行 AI 代码」，记住选择后不再逐次审批。此授权允许已连接 AI 读写你打开本插件的文件，关闭开关即可恢复手动审批。之后无需重复输入桥接口令。
 
 如果没有可安装的 Community 版本，可在 Figma 的开发插件菜单导入本包 `figma-plugin/manifest.json`。此包保留原插件 ID `1691148316136154777`；非原开发者如遇 ID 所有权限制，需要按 Figma 提示创建自己的开发插件 ID。不要把本包当成已获 Figma Community 或 Codex 官方目录批准的版本。
 
 ## 边界与数据
 
-Skill 的自动匹配取决于 AI 客户端，不是全局错误拦截。云端执行环境不能连接用户电脑的 localhost。字体必须已在 Figma Desktop 中可加载；仅安装 Skill 不会安装字体。Figma 插件与本机桥接服务仍然承担实际执行，服务由 AI 的 Skill 脚本按需启动。通用批准执行 JavaScript、查询字体、验证加载、重新连接等原功能保留。
+Skill 的自动匹配取决于 AI 客户端，不是全局错误拦截。云端执行环境不能连接用户电脑的 localhost。字体必须已在 Figma Desktop 中可加载；仅安装 Skill 不会安装字体。Figma 插件与本机桥接服务仍然承担实际执行，服务由 AI 的 Skill 脚本按需启动。通用授权执行 JavaScript、查询字体、验证加载、重新连接等原功能保留。
 
 字体文件不经桥接传输。字体元数据、批准的代码和执行结果可能包含文档内容，会返回调用 AI 工具。凭据默认保存在 `~/.local/state/local-font-bridge`，不会打入发布包；任务结果只在服务内存中短暂保存。服务仅监听 localhost，不设开机自启；凭据跨会话保存。
 
