@@ -2,23 +2,15 @@
 
 一次安装，照常让本地 AI 修改 Figma 设计；当 Figma MCP 实际无法加载原字体时，Skill 指导 AI 自动启动桥接、检查本机原字体并继续尚未完成的编辑，不用每次输入“调用 Local Font Bridge”。无需配置单独的 Local Font Bridge MCP，不需要从 Codex 公共插件目录安装。
 
-## 安装一次
+## 安装
 
-需要 Figma Desktop、Node.js 20+，以及能读取 Skill、执行本机命令并连接 localhost 的 AI 工具。
+把下面这句话发给 Codex：
 
-只发送 GitHub 页面链接不会自动安装。请把下面整句话发给 Codex：
+> 请使用 `$skill-installer` 安装 Local Font Bridge Skill：https://github.com/suleeeee/figma-local-font-bridge/tree/main/skills/figma-local-font-bridge
 
-> 请使用 `$skill-installer` 安装这个 Skill：https://github.com/suleeeee/figma-local-font-bridge/tree/main/skills/figma-local-font-bridge
+安装完成后，从下一轮对话开始生效；如果没有识别到，请重启 Codex。
 
-Codex 会下载并安装 Skill，安装完成后的下一轮对话即可使用。如果当前环境不能调用 Skill Installer，也可以[下载 ZIP](https://github.com/suleeeee/figma-local-font-bridge/archive/refs/heads/main.zip)，解压后在目录中执行：
-
-```sh
-node install.mjs
-```
-
-脚本默认安装到 `~/.agents/skills/figma-local-font-bridge`。不会修改 MCP 配置，不会 npm install。若安装后未发现 Skill，请重启 Codex。已有完全相同版本时重复安装不产生副作用；更新使用 `node install.mjs --update`，原版备份放在本发布目录的 install-backups 下。
-
-其他支持 Agent Skills 的本地客户端：将 `skills/figma-local-font-bridge` 放到该客户端的技能目录，且允许其执行本机 Node 命令。尚未逐一验证其他客户端，不能保证它们自动采用 Skill。
+运行需要 Figma Desktop 和 Node.js 20+。
 
 ## 每次使用
 
