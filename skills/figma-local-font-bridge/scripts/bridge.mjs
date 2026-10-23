@@ -47,18 +47,21 @@ try {
       output(await submit({ kind: 'check-font', family: args[0], style: args[1] })); break;
     }
     case 'list-fonts': output(await submit({ kind: 'list-fonts', query: args[0] || '' })); break;
-    case 'submit-js': {
+    case 'submit-task': {
       const file = option('--file');
-      if (!file) throw new Error('用法：submit-js --file /absolute/task.js [--timeout-ms 180000]');
+      if (!file) throw new Error('用法：submit-task --file /absolute/task.json [--timeout-ms 180000]');
       const timeoutMs = Number(option('--timeout-ms') || 180000);
       if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 300000) throw new Error('timeout-ms 必须为 1000–300000。');
       const health = await request('/health');
       if (!health.pluginConnected) throw Object.assign(new Error('插件未连接；请打开目标文件中的插件。'), { code: 'PLUGIN_NOT_CONNECTED' });
-      const result = await request('/task', { kind: 'run-js', code: fs.readFileSync(path.resolve(file), 'utf8'), timeoutMs });
+      const task = JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+      if (!task || typeof task !== 'object' || Array.isArray(task)) throw new Error('任务文件必须是 JSON 对象');
+      if (!['inspect-text', 'replace-text', 'apply-font', 'create-text'].includes(task.kind)) throw new Error('只支持 inspect-text、replace-text、apply-font、create-text');
+      const result = await request('/task', { ...task, timeoutMs });
       output({ ...result, state: 'queued', message: '已提交，将由已授权的插件自动执行。用 result 读取本任务，不要重复提交。' }); break;
     }
     case 'result': output(await request(`/result/${requireId(args[0])}`)); break;
     case 'cancel': output(await request('/cancel', { id: requireId(args[0]) })); break;
-    default: throw new Error('命令：start | status | connect | check-font | list-fonts | submit-js | result | cancel');
+    default: throw new Error('命令：start | status | connect | check-font | list-fonts | submit-task | result | cancel');
   }
 } catch (error) { output({ ok: false, code: error.code || 'BRIDGE_ERROR', error: error.message }); process.exitCode = 1; }

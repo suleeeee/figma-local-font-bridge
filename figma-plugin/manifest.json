@@ -11,7 +11,7 @@
     "allowedDomains": [
       "http://localhost:4789"
     ],
-    "reasoning": "Connects only to a user-operated localhost companion to identify available desktop font families and styles, verify font loading, and perform automatic Plugin API operations after initial connection authorization. Font files are not uploaded; operation results may include document content."
+    "reasoning": "Communicates only with a user-operated companion service running on the same computer through the loopback interface. Requests are limited to font discovery, font loading checks, and explicit text operations on identified text nodes. Font files are not uploaded. The publisher does not host or access the companion service."
   },
   "id": "1691148316136154777"
 }

@@ -71,14 +71,33 @@ export function startBridgeServer({ port = 4789, token = persistentToken(), cred
         const [keyHash, entry] = entries[0]; approved.add(keyHash); saveCredentials(); pairing.delete(keyHash);
         return send(200, { ok: true, requestId: entry.id, message: '已授权此插件；以后自动连接。' });
       }
-      if (req.method === 'GET' && url.pathname === '/health') return send(200, { ok: true, service: 'local-font-bridge', version: '1.1.4', connectionRequests: owner ? [...pairing.values()] : undefined, pluginConnected: Date.now() - lastSeen < 15000, pending: [...tasks.values()].filter(t => t.status !== 'done').length });
+      if (req.method === 'GET' && url.pathname === '/health') return send(200, { ok: true, service: 'local-font-bridge', version: '1.2.0', connectionRequests: owner ? [...pairing.values()] : undefined, pluginConnected: Date.now() - lastSeen < 15000, pending: [...tasks.values()].filter(t => t.status !== 'done').length });
       if (req.method === 'POST' && url.pathname === '/task') {
-        if (!['check-font', 'list-fonts', 'run-js'].includes(body.kind)) return send(400, { error: '不支持的任务类型' });
-        if (body.kind === 'check-font' && (typeof body.family !== 'string' || !body.family.trim() || typeof body.style !== 'string' || !body.style.trim())) return send(400, { error: '请填写字体家族和字重' });
-        if (body.kind === 'run-js' && (typeof body.code !== 'string' || !body.code.trim() || body.code.length > 100000)) return send(400, { error: '代码为空或超过 100KB' });
+        const allowedKinds = ['check-font', 'list-fonts', 'inspect-text', 'replace-text', 'apply-font', 'create-text'];
+        if (!allowedKinds.includes(body.kind)) return send(400, { error: '不支持的任务类型' });
+        const validId = value => typeof value === 'string' && /^[A-Za-z0-9:_;-]{1,128}$/.test(value);
+        const validFont = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 200;
+        const validText = (value, max = 10000) => typeof value === 'string' && value.length <= max;
+        if (body.kind === 'check-font' && (!validFont(body.family) || !validFont(body.style))) return send(400, { error: '请填写字体家族和样式' });
+        if (body.kind === 'inspect-text' && body.nodeIds !== undefined && (!Array.isArray(body.nodeIds) || body.nodeIds.length > 100 || body.nodeIds.some(id => !validId(id)))) return send(400, { error: '文字节点列表无效' });
+        if (body.kind === 'replace-text') {
+          if (!validId(body.nodeId) || !Number.isInteger(body.start) || !Number.isInteger(body.end) || body.start < 0 || body.end < body.start || !validText(body.text)) return send(400, { error: '文字替换参数无效' });
+          if (body.expectedText !== undefined && !validText(body.expectedText)) return send(400, { error: 'expectedText 无效' });
+          if ((body.family !== undefined || body.style !== undefined) && (!validFont(body.family) || !validFont(body.style))) return send(400, { error: '字体家族和样式必须同时填写' });
+        }
+        if (body.kind === 'apply-font' && (!validId(body.nodeId) || !validFont(body.family) || !validFont(body.style) || (body.start !== undefined && (!Number.isInteger(body.start) || body.start < 0)) || (body.end !== undefined && (!Number.isInteger(body.end) || body.end < 0)))) return send(400, { error: '字体应用参数无效' });
+        if (body.kind === 'create-text') {
+          if (!validText(body.text) || !validFont(body.family) || !validFont(body.style) || (body.parentId !== undefined && !validId(body.parentId)) || (body.name !== undefined && !validText(body.name, 200))) return send(400, { error: '创建文字参数无效' });
+          if (body.fontSize !== undefined && (!Number.isFinite(body.fontSize) || body.fontSize < 1 || body.fontSize > 1000)) return send(400, { error: '字号必须为 1–1000' });
+          if (body.fillHex !== undefined && (typeof body.fillHex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(body.fillHex))) return send(400, { error: '颜色必须是 #RRGGBB' });
+        }
         if ([...tasks.values()].filter(t => t.status !== 'done').length >= 20) return send(429, { error: '任务队列已满' });
         const id = randomUUID(); const timeout = Math.max(1000, Math.min(300000, Number(body.timeoutMs) || 120000));
-        tasks.set(id, { id, kind: body.kind, family: body.family, style: body.style, query: typeof body.query === 'string' ? body.query.slice(0, 200) : '', code: body.code, status: 'queued', deadline: Date.now() + timeout });
+        const task = { id, kind: body.kind, status: 'queued', deadline: Date.now() + timeout };
+        for (const key of ['family', 'style', 'nodeId', 'expectedText', 'text', 'parentId', 'name', 'fillHex', 'fontSize', 'x', 'y', 'start', 'end']) if (body[key] !== undefined) task[key] = body[key];
+        if (body.kind === 'list-fonts') task.query = typeof body.query === 'string' ? body.query.slice(0, 200) : '';
+        if (body.kind === 'inspect-text') task.nodeIds = Array.isArray(body.nodeIds) ? body.nodeIds : [];
+        tasks.set(id, task);
         return send(200, { ok: true, id });
       }
       if (req.method === 'POST' && url.pathname === '/plugin/next') {
@@ -99,7 +118,7 @@ export function startBridgeServer({ port = 4789, token = persistentToken(), cred
       }
       if (req.method === 'POST' && url.pathname === '/cancel') {
         const task = tasks.get(body.id);
-        if (task && task.status !== 'done') { task.status = 'done'; task.completedAt = Date.now(); task.result = { ok: false, error: '调用方已取消。已开始执行的代码无法回滚。' }; }
+        if (task && task.status !== 'done') { task.status = 'done'; task.completedAt = Date.now(); task.result = { ok: false, error: '调用方已取消。已开始执行的操作无法回滚。' }; }
         return send(200, { ok: true });
       }
       if (req.method === 'GET' && url.pathname.startsWith('/result/')) {
